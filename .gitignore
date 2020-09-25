@@ -1,32 +1,56 @@
-# Prerequisites
-*.d
-
-# Compiled Object files
-*.slo
-*.lo
 *.o
-*.obj
-
-# Precompiled Headers
-*.gch
-*.pch
-
-# Compiled Dynamic libraries
+*.bak
+*.orig
+*.diff
+*.patch
 *.so
-*.dylib
-*.dll
-
-# Fortran module files
-*.mod
-*.smod
-
-# Compiled Static libraries
-*.lai
-*.la
 *.a
-*.lib
+*.la
+*.lo
+*.pyc
+*.page
+*.swp
+build*
+compile
+*~
+core.*
 
-# Executables
-*.exe
-*.out
-*.app
+Makefile
+Makefile.in
+core
+log
+.deps
+.libs
+.dirstamp
+
+/INSTALL
+
+/aclocal.m4
+/autom4te.cache
+/autoregen.sh
+/compile
+/config.guess
+/config.h
+/config.h.in
+/config.log
+/config.status
+/config.sub
+/configure
+/depcomp
+/install-sh
+aclocal.m4
+autom4te.cache
+autoregen.sh
+config.*
+configure
+libtool
+INSTALL
+Makefile.in
+depcomp
+install-sh
+ltmain.sh
+missing
+stamp-*
+my-plugin-*.tar.*
+*~
+
