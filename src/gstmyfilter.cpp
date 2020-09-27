@@ -88,7 +88,7 @@ enum
 static GstStaticPadTemplate sink_factory = GST_STATIC_PAD_TEMPLATE ("sink",
     GST_PAD_SINK,
     GST_PAD_ALWAYS,
-    GST_STATIC_CAPS ("ANY")
+    GST_STATIC_CAPS ("video/x-raw")
     );
 
 static GstStaticPadTemplate src_factory = GST_STATIC_PAD_TEMPLATE ("src",
@@ -215,11 +215,30 @@ gst_my_filter_sink_event (GstPad * pad, GstObject * parent, GstEvent * event)
       GstCaps * caps;
 
       gst_event_parse_caps (event, &caps);
-      filter -> processor = new FrameProcessor();
+
+      int width;
+      int height;
+
+      int clen = gst_caps_get_size  (caps);
+      std::cout<< gst_caps_to_string(caps) << ":" << clen << std::endl;
+      for (int i = 0; i < clen; i++) {
+        GstStructure *structure;
+        GstCapsFeatures *features;
+        structure = gst_caps_get_structure  (caps, i);
+        if (strcmp(gst_structure_get_name (structure), "video/x-raw") == 0) {
+          if (gst_structure_get_int (structure, "width", &width) &&  gst_structure_get_int (structure, "height", &height)) {
+            filter -> processor = new FrameProcessor(width, height);
+            break;
+          }
+        }
+      }
+
+
+      
       // GstVideoInfo x;
       // gst_video_info_from_caps(&x, caps);
       // std::cout<< "Size: " << x.width << x.height <<std::endl;
-      std::cout<< gst_caps_to_string(caps) <<std::endl;
+      
       /* do something with the caps */
 
       /* and forward */
