@@ -62,8 +62,8 @@
 
 #include <gst/gst.h>
 #include <iostream>
-#include <chrono>
 #include "gstmyfilter.h"
+#include "process.h"
 
 GST_DEBUG_CATEGORY_STATIC (gst_my_filter_debug);
 #define GST_CAT_DEFAULT gst_my_filter_debug
@@ -215,6 +215,7 @@ gst_my_filter_sink_event (GstPad * pad, GstObject * parent, GstEvent * event)
       GstCaps * caps;
 
       gst_event_parse_caps (event, &caps);
+      filter -> processor = new FrameProcessor();
       // GstVideoInfo x;
       // gst_video_info_from_caps(&x, caps);
       // std::cout<< "Size: " << x.width << x.height <<std::endl;
@@ -226,7 +227,8 @@ gst_my_filter_sink_event (GstPad * pad, GstObject * parent, GstEvent * event)
       break;
     }
     case GST_EVENT_EOS:
-      std::cout<< "Total: " << filter -> x << ": " << filter -> total_t << " " << (filter -> total_t / filter -> x) << "::" << filter -> mm <<std::endl;
+      ((FrameProcessor *) (filter -> processor))->done_process();
+      delete ((FrameProcessor *) (filter -> processor));
     default:
       ret = gst_pad_event_default (pad, parent, event);
       break;
@@ -245,35 +247,23 @@ gst_my_filter_chain (GstPad * pad, GstObject * parent, GstBuffer * buf)
   filter = GST_MYFILTER (parent);
 
   if (filter->silent == FALSE){
-    auto start = std::chrono::high_resolution_clock::now();
-    filter -> x ++;
-    int size = gst_buffer_get_size (buf);
     int n = gst_buffer_n_memory (buf);
     int ss = 0;
-    guint8 total = 0;
+    
     for(int j = 0 ; j < n ; j ++ ) {
       GstMemory *m = gst_buffer_peek_memory (buf, j);
       GstMapInfo info;
       gst_memory_map(m, &info, GST_MAP_READ);
       guint8 *data = info.data;
+      ((FrameProcessor *)filter -> processor) -> process_frame(data, info.size);
       ss += info.size;
-      for(int i = 0 ; i < info.size; i ++) {
-        total += data[i];
-      }
-      filter -> mm += total;
+      
       gst_memory_unmap (m, &info);
     }
-    auto elapsed = std::chrono::high_resolution_clock::now() - start;
-
-    long long microseconds = std::chrono::duration_cast<std::chrono::microseconds>(elapsed).count();
-    filter -> total_t += microseconds;
+    
     // std::cout << size << "=" << ss << ": " << total << std::endl;
   }
-  if (filter -> x % 3 == 0) {
-    return gst_pad_push (filter->srcpad, buf);
-  }
-  /* just push out the incoming buffer without touching it */
-  return GST_FLOW_OK ;
+  return gst_pad_push (filter->srcpad, buf);
 }
 
 

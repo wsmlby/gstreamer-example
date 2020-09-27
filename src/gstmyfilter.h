@@ -72,9 +72,7 @@ struct _GstMyFilter
   GstPad *sinkpad, *srcpad;
 
   gboolean silent;
-  int x = 0;
-  long long total_t = 0;
-  int64_t mm = 0;
+  void* processor;
 };
 
 struct _GstMyFilterClass 
