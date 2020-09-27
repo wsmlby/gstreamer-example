@@ -223,7 +223,6 @@ gst_my_filter_sink_event (GstPad * pad, GstObject * parent, GstEvent * event)
       std::cout<< gst_caps_to_string(caps) << ":" << clen << std::endl;
       for (int i = 0; i < clen; i++) {
         GstStructure *structure;
-        GstCapsFeatures *features;
         structure = gst_caps_get_structure  (caps, i);
         if (strcmp(gst_structure_get_name (structure), "video/x-raw") == 0) {
           if (gst_structure_get_int (structure, "width", &width) &&  gst_structure_get_int (structure, "height", &height)) {

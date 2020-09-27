@@ -1,10 +1,8 @@
+#include "libcv.h"
 
+#include <string.h>
+#include "libcv-cuda.h"
 
-#include "process.h"
-
-#include <iostream>
-#include <chrono>
-
-void hello() {
-    std::cout << "hello" << std::endl;
+void downscale(uint8_t* dest, const uint8_t* src, const int width, const int height) {
+    downscale_cuda(dest, src, width, height);
 }
