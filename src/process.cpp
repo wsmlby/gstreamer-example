@@ -4,8 +4,10 @@
 
 #include <iostream>
 #include <chrono>
+#include "libcv.h"
 
 int FrameProcessor::process_frame(uint8_t* data, int size) {
+    hello();
     x ++;
     auto start = std::chrono::high_resolution_clock::now();
     
