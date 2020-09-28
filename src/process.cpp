@@ -50,7 +50,7 @@ int FrameProcessor::process_frame_internal(uint8_t* data, int size) {
         std::cerr << "Wrong!!!" << std::endl;
         return -1;
     }
-    downscale_cuda(newBuffer, data, width_, height_);
+    downscale_ref(newBuffer, data, width_, height_);
     // std::cout << size << std::endl;
     uint8_t total = 0;
 

@@ -3,13 +3,22 @@
 #include <string.h>
 
 __global__
-void copy(int n, uint8_t *x, const uint8_t *y)
+void downscale(int width, int height, uint8_t *dst, const uint8_t *src)
 {
-  int index = threadIdx.x;
-  int stride = blockDim.x;
-  for (int i = index; i < n; i += stride)
-      x[i] = y[i];
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    int j = blockIdx.y * blockDim.y + threadIdx.y;
+    if (i < width && j < height) {
+        int x = 0;
+        for(int ii = 0; ii < 2; ii++) {
+            for(int jj = 0; jj < 2; jj ++) {
+                x += src[(j * 2 + jj) * width * 2 + i * 2 + ii];
+            }
+        }
+        dst[j * width + i] = x / 4;
+    }
+        
 }
+
 uint8_t* src0;
 uint8_t* dst;
 void cuda_init(int width, int height) {
@@ -19,12 +28,31 @@ void cuda_init(int width, int height) {
     cudaMalloc(&dst, size);
 }
 
+void downscale_ref(uint8_t* dest, const uint8_t* src, const int width, const int height) {
+    for(int i = 0; i < width / 2; i ++) {
+        for(int j = 0; j < height / 2; j ++) {
+            int x = 0;
+            for(int ii = 0; ii < 2; ii++) {
+                for(int jj = 0; jj < 2; jj ++) {
+                    x += src[(j * 2 + jj) * width + i * 2 + ii];
+                }
+            }
+            dest[j*width/2 + i] = x / 4;
+        }
+    }
+}
+
 void downscale_cuda(uint8_t* dest, const uint8_t* src, const int width, const int height) {
     // memcpy(dest, src, width * height / 4);
     int size0 = width * height;
     int size = width * height / 4;
-    // cudaMemcpy(src0, src, size0, cudaMemcpyHostToDevice);
-    // copy<<<16, 16>>>(size, dst, src0);
+    cudaMemcpy(src0, src, size0, cudaMemcpyHostToDevice);
+
+
+    dim3 threadsPerBlock(16, 16);
+    dim3 numBlocks(width/2 / threadsPerBlock.x + 1, height/2 / threadsPerBlock.y + 1);
+
+    downscale<<<numBlocks, threadsPerBlock>>>(width/2, height/2, dst, src0);
     cudaMemcpy(dest, dst, size, cudaMemcpyDeviceToHost);
 }
 
