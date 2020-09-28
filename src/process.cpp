@@ -4,7 +4,7 @@
 
 #include <iostream>
 #include <chrono>
-#include "libcv.h"
+#include "libcv-cuda.h"
 
 int FrameProcessor::process_frame(uint8_t* data, int size) {
     x ++;
@@ -16,7 +16,7 @@ int FrameProcessor::process_frame(uint8_t* data, int size) {
     long long microseconds = std::chrono::duration_cast<std::chrono::microseconds>(elapsed).count();
     total_t += microseconds;
     if (microseconds >  30000) {
-        std::cerr << "Current frame processing time > 30ms!" << std::endl;
+        std::cerr << "Current frame processing time > 30ms: " << (microseconds / 1000) << std::endl;
     }
     return result;
 }
@@ -30,8 +30,10 @@ FrameProcessor::FrameProcessor(int width, int height): width_(width), height_(he
     } else {
         std::cout << "allocted at: " << static_cast<void*>(newBuffer) << " for " << newSize << std::endl;
     }
+    cuda_init(width, height);
 }
 FrameProcessor::~FrameProcessor() {
+    cuda_deinit();
     std::cout << "DeAllocate" << std::endl;
     
     free(newBuffer);
@@ -48,7 +50,7 @@ int FrameProcessor::process_frame_internal(uint8_t* data, int size) {
         std::cerr << "Wrong!!!" << std::endl;
         return -1;
     }
-    downscale(newBuffer, data, width_, height_);
+    downscale_cuda(newBuffer, data, width_, height_);
     // std::cout << size << std::endl;
     uint8_t total = 0;
 
