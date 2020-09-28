@@ -216,6 +216,8 @@ gst_my_filter_sink_event (GstPad * pad, GstObject * parent, GstEvent * event)
 
       gst_event_parse_caps (event, &caps);
 
+      std::cout<< gst_caps_to_string(caps) <<std::endl;
+
       int width;
       int height;
 
