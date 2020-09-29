@@ -5,7 +5,7 @@
 #include <iostream>
 #include <chrono>
 #include "libcv-cuda.h"
-#include <opencv2/photo.hpp>
+#include <opencv2/photo/cuda.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <vector>
 
@@ -99,8 +99,9 @@ int FrameProcessor::process_frame_internal(GstBuffer* buf0, uint8_t* data, int s
     // downscale_cuda(newBuffer + newSize * 3, data, width_, height_, width_);
     cv::Mat mat_in(height_,width_,  CV_8UC1, data);
     cv::Mat mat_out(height_,width_, CV_8UC1, newBuffer);
-    cv::fastNlMeansDenoising(mat_in, mat_out, 7);
-    
+    cv::cuda::GpuMat mat_in_gpu(mat_in), mat_out_gpu(height_, width_, CV_8UC1);
+    cv::cuda::fastNlMeansDenoising(mat_in_gpu, mat_out_gpu, 7);
+    mat_out_gpu.download(mat_out);
     std::string fn = "filename_";
 
     cv::imwrite(fn + std::to_string(x) + ".prev.png", mat_in, compression_params);

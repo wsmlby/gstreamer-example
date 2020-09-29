@@ -11,5 +11,5 @@ libgstmyfilter_la_SOURCES = libcvcuda.cu.cpp gstmyfilter.cpp gstmyfilter.h proce
 # compiler and linker flags used to compile this plugin, set in configure.ac
 libgstmyfilter_la_CXXFLAGS = $(GST_CFLAGS) -I/usr/include/opencv4 
 libgstmyfilter_la_LIBADD = $(GST_LIBS)  
-libgstmyfilter_la_LDFLAGS = $(GST_PLUGIN_LDFLAGS) -L/usr/local/cuda/lib64 -lcudart -lopencv_photo -lopencv_imgcodecs
+libgstmyfilter_la_LDFLAGS = $(GST_PLUGIN_LDFLAGS) -L/usr/local/cuda/lib64 -L/usr/local/lib -lcudart -lopencv_photo -lopencv_imgcodecs
 libgstmyfilter_la_LIBTOOLFLAGS = --tag=disable-static
