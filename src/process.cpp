@@ -5,11 +5,39 @@
 #include <iostream>
 #include <chrono>
 #include "libcv-cuda.h"
+#include <opencv2/photo.hpp>
 
-int FrameProcessor::process_frame(uint8_t* data, int size) {
+struct GstMyFilter
+{
+  GstElement element;
+
+  GstPad *sinkpad, *srcpad;
+
+  gboolean silent;
+  void* processor;
+};
+
+GstFlowReturn
+gst_processor (GstPad * pad, GstObject * parent, GstBuffer * buf)
+{
+  GstMyFilter *filter;
+
+  filter = (GstMyFilter *) (parent);
+
+  GstMapInfo info;
+  gst_buffer_map(buf, &info, GST_MAP_READ);
+  guint8 *data = info.data;
+  ((FrameProcessor *)filter -> processor) -> process_frame(buf, data, info.size);
+  gst_buffer_unmap (buf, &info);
+//   gst_pad_push(filter -> srcpad, buf);
+//   gst_buffer_unref(buf);
+  return GST_FLOW_OK;
+}
+
+int FrameProcessor::process_frame(GstBuffer* buf, uint8_t* data, int size) {
     x ++;
     auto start = std::chrono::high_resolution_clock::now();
-    int result = process_frame_internal(data, size);
+    int result = process_frame_internal(buf, data, size);
     
     auto elapsed = std::chrono::high_resolution_clock::now() - start;
 
@@ -20,39 +48,45 @@ int FrameProcessor::process_frame(uint8_t* data, int size) {
     }
     return result;
 }
-FrameProcessor::FrameProcessor(int width, int height): width_(width), height_(height) {
+FrameProcessor::FrameProcessor(GstPad *srcpad, int width, int height): width_(width), height_(height), srcpad_(srcpad) {
     newSize = width * height / 4;
-    std::cout << "Allocate: " << (newSize) << std::endl;
+    // std::cout << "Allocate: " << (newSize) << std::endl;
     
-    newBuffer = (uint8_t*)malloc(newSize);
-    if (newBuffer == nullptr) {
-        std::cerr << "Allocation failed!" << std::endl;
-    } else {
-        std::cout << "allocted at: " << static_cast<void*>(newBuffer) << " for " << newSize << std::endl;
-    }
+    // newBuffer = (uint8_t*)malloc(newSize);
+    // if (newBuffer == nullptr) {
+    //     std::cerr << "Allocation failed!" << std::endl;
+    // } else {
+    //     std::cout << "allocted at: " << static_cast<void*>(newBuffer) << " for " << newSize << std::endl;
+    // }
     cuda_init(width, height);
 }
 FrameProcessor::~FrameProcessor() {
     cuda_deinit();
-    std::cout << "DeAllocate" << std::endl;
+    // std::cout << "DeAllocate" << std::endl;
     
-    free(newBuffer);
-    newBuffer = nullptr;
+    // free(newBuffer);
+    // newBuffer = nullptr;
 }
 
-int FrameProcessor::process_frame_internal(uint8_t* data, int size) {
-    if (processing) {
-        std::cerr << "Overlap processing!" << std::endl;
-        return -1;
-    }
-    processing = true;
+int FrameProcessor::process_frame_internal(GstBuffer* buf0, uint8_t* data, int size) {
+    // GstBuffer* buf = gst_buffer_new_allocate(NULL, size, NULL);
+    GstBuffer* buf = gst_buffer_new();
+    gst_buffer_copy_into(buf, buf0, GST_BUFFER_COPY_ALL, 0, -1);
+    GstMapInfo info;
+    gst_buffer_map(buf, &info, GST_MAP_READWRITE);
+    
+    guint8 *newBuffer = info.data;
+    
     if (newBuffer == nullptr) {
         std::cerr << "Wrong!!!" << std::endl;
         return -1;
     }
-    downscale_cuda(newBuffer, data, width_, height_);
-    // downscale_ref(newBuffer, data, width_, height_);
-    // std::cout << size << std::endl;
+    // downscale_cuda(newBuffer, data, width_, height_, width_);
+    cv::Mat mat_in(width_, height_, CV_8UC1, data);
+    cv::Mat mat_out(width_, height_, CV_8UC1, newBuffer);
+    cv::fastNlMeansDenoising(mat_out, mat_in);
+    // // downscale_ref(newBuffer, data, width_, height_);
+    // // std::cout << size << std::endl;
     uint8_t total = 0;
 
     for(int i = 0 ; i < newSize; i ++) {
@@ -60,7 +94,8 @@ int FrameProcessor::process_frame_internal(uint8_t* data, int size) {
     }
 
     mm += total;
-    processing = false;
+    gst_buffer_unmap(buf, &info);
+    gst_pad_push (srcpad_, buf);
     return 0;
 }
 

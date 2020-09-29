@@ -94,7 +94,7 @@ static GstStaticPadTemplate sink_factory = GST_STATIC_PAD_TEMPLATE ("sink",
 static GstStaticPadTemplate src_factory = GST_STATIC_PAD_TEMPLATE ("src",
     GST_PAD_SRC,
     GST_PAD_ALWAYS,
-    GST_STATIC_CAPS ("ANY")
+    GST_STATIC_CAPS ("video/x-raw,format=GRAY8")
     );
 
 #define gst_my_filter_parent_class parent_class
@@ -106,7 +106,6 @@ static void gst_my_filter_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec);
 
 static gboolean gst_my_filter_sink_event (GstPad * pad, GstObject * parent, GstEvent * event);
-static GstFlowReturn gst_my_filter_chain (GstPad * pad, GstObject * parent, GstBuffer * buf);
 
 /* GObject vmethod implementations */
 
@@ -151,7 +150,7 @@ gst_my_filter_init (GstMyFilter * filter)
   gst_pad_set_event_function (filter->sinkpad,
                               GST_DEBUG_FUNCPTR(gst_my_filter_sink_event));
   gst_pad_set_chain_function (filter->sinkpad,
-                              GST_DEBUG_FUNCPTR(gst_my_filter_chain));
+                              GST_DEBUG_FUNCPTR(gst_processor));
   GST_PAD_SET_PROXY_CAPS (filter->sinkpad);
   gst_element_add_pad (GST_ELEMENT (filter), filter->sinkpad);
 
@@ -228,7 +227,7 @@ gst_my_filter_sink_event (GstPad * pad, GstObject * parent, GstEvent * event)
         structure = gst_caps_get_structure  (caps, i);
         if (strcmp(gst_structure_get_name (structure), "video/x-raw") == 0) {
           if (gst_structure_get_int (structure, "width", &width) &&  gst_structure_get_int (structure, "height", &height)) {
-            filter -> processor = new FrameProcessor(width, height);
+            filter -> processor = new FrameProcessor(filter-> srcpad, width, height);
             break;
           }
         }
@@ -259,32 +258,7 @@ gst_my_filter_sink_event (GstPad * pad, GstObject * parent, GstEvent * event)
 /* chain function
  * this function does the actual processing
  */
-static GstFlowReturn
-gst_my_filter_chain (GstPad * pad, GstObject * parent, GstBuffer * buf)
-{
-  GstMyFilter *filter;
 
-  filter = GST_MYFILTER (parent);
-
-  if (filter->silent == FALSE){
-    int n = gst_buffer_n_memory (buf);
-    int ss = 0;
-    
-    for(int j = 0 ; j < n ; j ++ ) {
-      GstMemory *m = gst_buffer_peek_memory (buf, j);
-      GstMapInfo info;
-      gst_memory_map(m, &info, GST_MAP_READ);
-      guint8 *data = info.data;
-      ((FrameProcessor *)filter -> processor) -> process_frame(data, info.size);
-      ss += info.size;
-      
-      gst_memory_unmap (m, &info);
-    }
-    
-    // std::cout << size << "=" << ss << ": " << total << std::endl;
-  }
-  return gst_pad_push (filter->srcpad, buf);
-}
 
 
 /* entry point to initialize the plug-in
