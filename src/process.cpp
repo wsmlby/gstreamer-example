@@ -6,6 +6,14 @@
 #include <chrono>
 #include "libcv-cuda.h"
 #include <opencv2/photo.hpp>
+#include <opencv2/imgcodecs.hpp>
+#include <vector>
+
+namespace {
+    std::vector<int> compression_params;
+}
+
+    
 
 struct GstMyFilter
 {
@@ -29,6 +37,7 @@ gst_processor (GstPad * pad, GstObject * parent, GstBuffer * buf)
   guint8 *data = info.data;
   ((FrameProcessor *)filter -> processor) -> process_frame(buf, data, info.size);
   gst_buffer_unmap (buf, &info);
+  gst_buffer_unref(buf);
 //   gst_pad_push(filter -> srcpad, buf);
 //   gst_buffer_unref(buf);
   return GST_FLOW_OK;
@@ -59,6 +68,10 @@ FrameProcessor::FrameProcessor(GstPad *srcpad, int width, int height): width_(wi
     //     std::cout << "allocted at: " << static_cast<void*>(newBuffer) << " for " << newSize << std::endl;
     // }
     cuda_init(width, height);
+    if (compression_params.size() == 0) {
+        compression_params.push_back(cv::IMWRITE_PNG_COMPRESSION);
+        compression_params.push_back(0);
+    }
 }
 FrameProcessor::~FrameProcessor() {
     cuda_deinit();
@@ -81,12 +94,26 @@ int FrameProcessor::process_frame_internal(GstBuffer* buf0, uint8_t* data, int s
         std::cerr << "Wrong!!!" << std::endl;
         return -1;
     }
-    // downscale_cuda(newBuffer, data, width_, height_, width_);
-    cv::Mat mat_in(width_, height_, CV_8UC1, data);
-    cv::Mat mat_out(width_, height_, CV_8UC1, newBuffer);
-    cv::fastNlMeansDenoising(mat_out, mat_in);
+
+    if (x == 25) {
+    // downscale_cuda(newBuffer + newSize * 3, data, width_, height_, width_);
+    cv::Mat mat_in(height_,width_,  CV_8UC1, data);
+    cv::Mat mat_out(height_,width_, CV_8UC1, newBuffer);
+    cv::fastNlMeansDenoising(mat_in, mat_out, 7);
+    
+    std::string fn = "filename_";
+
+    cv::imwrite(fn + std::to_string(x) + ".prev.png", mat_in, compression_params);
+    
+    cv::imwrite(fn + std::to_string(x) + ".png", mat_out, compression_params);
+    
+
+    cv::Rect myROI(700, 200, 400, 400);
+    cv::imwrite("crop.png", mat_out(myROI), compression_params);
+    cv::imwrite("crop.prev.png", mat_in(myROI), compression_params);
+
+    }
     // // downscale_ref(newBuffer, data, width_, height_);
-    // // std::cout << size << std::endl;
     uint8_t total = 0;
 
     for(int i = 0 ; i < newSize; i ++) {
